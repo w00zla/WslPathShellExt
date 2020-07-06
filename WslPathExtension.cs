@@ -1,10 +1,9 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Windows.Forms;
+using System.Xml;
 using SharpShell.Attributes;
 using SharpShell.SharpContextMenu;
 
@@ -12,6 +11,7 @@ namespace WslPathShellExt
 {
     [ComVisible(true)]
     [COMServerAssociation(AssociationType.AllFiles)]
+    [COMServerAssociation(AssociationType.Directory)]
     public class WslPathExtension : SharpContextMenu
     {
         [DllImport("Kernel32.Dll", EntryPoint="Wow64EnableWow64FsRedirection")]
@@ -32,6 +32,7 @@ namespace WslPathShellExt
                 Text = "Copy WSL Path",
             };
         
+            // register menu item's click-event
             menuStrip.Click += (sender, args) => CopyWslPathToClipboard();
             //  Add the item to the context menu.
             menu.Items.Add(menuStrip);
@@ -54,8 +55,9 @@ namespace WslPathShellExt
             }
         }
     
-        private string GetWslPath(string path)
-        { EnableWow64FSRedirection(false);
+        private static string GetWslPath(string path)
+        { 
+            EnableWow64FSRedirection(false);
             try
             {
                 //Create process
@@ -77,12 +79,20 @@ namespace WslPathShellExt
                 string strOutput = proc.StandardOutput.ReadToEnd();
                 proc.WaitForExit();
 
-                return strOutput;
+                return FormatCommandOutput(strOutput);
             }
             finally
             {
                 EnableWow64FSRedirection(true);
             }
+        }
+
+        private static string FormatCommandOutput(string output)
+        {
+            if (output.EndsWith("\n")) output = output.Substring(0, output.Length - 1);
+            if (output.EndsWith("\r")) output = output.Substring(0, output.Length - 1);
+
+            return $"\"{output}\"";
         }
     }
 } 
